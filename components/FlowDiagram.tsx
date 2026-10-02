@@ -1,6 +1,6 @@
 import React from 'react'
 
-export type FlowStep = 'request' | 'api' | 'observe' | 'testcase' | 'replay'
+export type FlowStep = 'request' | 'gin' | 'redis' | 'record' | 'artifacts' | 'replay' | 'result'
 
 interface FlowDiagramProps {
   activeStep?: FlowStep
@@ -20,100 +20,117 @@ interface StepInfo {
 
 const STEPS: StepInfo[] = [
   {
-    id: 'api',
-    num: '01',
-    label: 'Go App Setup',
-    desc: 'Runs actual business logic',
-    icon: '⚙️',
-    targetId: 'step-1-setup',
-  },
-  {
-    id: 'observe',
-    num: '02',
-    label: 'Keploy Observes',
-    desc: 'Captures request & response',
-    icon: '👀',
-    targetId: 'step-2-record',
-  },
-  {
     id: 'request',
-    num: '03',
-    label: 'Real API Request',
-    desc: 'Client triggers traffic',
+    num: '01',
+    label: 'API Request',
+    desc: 'Developer triggers cURL call',
     icon: '⚡',
-    targetId: 'step-3-traffic',
+    targetId: 'step-5-exercise-api',
   },
   {
-    id: 'testcase',
+    id: 'gin',
+    num: '02',
+    label: 'Gin Application',
+    desc: 'Processes business logic',
+    icon: '⚙️',
+    targetId: 'step-3-build-app',
+  },
+  {
+    id: 'redis',
+    num: '03',
+    label: 'Redis Storage',
+    desc: 'Stores generated OTP key',
+    icon: '📦',
+    targetId: 'step-2-start-redis',
+  },
+  {
+    id: 'record',
     num: '04',
-    label: 'Captured Test',
-    desc: 'Stored as YAML artifact',
+    label: 'Keploy Records',
+    desc: 'Observes HTTP & TCP wire calls',
+    icon: '👀',
+    targetId: 'step-4-start-recording',
+  },
+  {
+    id: 'artifacts',
+    num: '05',
+    label: 'Test & Mocks',
+    desc: 'Generates test-1.yml + mocks.yml',
     icon: '📄',
-    targetId: 'step-3-yaml',
+    targetId: 'step-6-inspect-artifacts',
   },
   {
     id: 'replay',
-    num: '05',
-    label: 'Deterministic Replay',
-    desc: 'Re-runs & asserts diffs',
+    num: '06',
+    label: 'Keploy Replay',
+    desc: 'Injects request & mocks Redis',
+    icon: '🔁',
+    targetId: 'step-7-replay-test',
+  },
+  {
+    id: 'result',
+    num: '07',
+    label: 'Test Result',
+    desc: 'Asserts response with noise filtering',
     icon: '🛡️',
-    targetId: 'step-4-replay',
+    targetId: 'step-8-mental-model',
   },
 ]
 
 const EXPLANATIONS: Record<FlowStep, string> = {
-  api: 'Your Go service executes its routes and handler code naturally without invasive SDKs.',
-  observe: 'Keploy intercepts network packets at the transport/process level without modifying your source code.',
-  request: 'A real incoming HTTP request from curl, Postman, or a web frontend triggers your service.',
-  testcase: 'Keploy serializes the exact request, mock dependencies (DBs/APIs), and response into version-controlled YAML.',
-  replay: 'During CI or local validation, Keploy replays the request, mocks external calls, and compares live output against the recorded golden response.',
+  request: 'A real incoming HTTP request (e.g. GET /api/getVerificationCode) triggers the authentication flow.',
+  gin: 'The Gin Go application processes the route, generates a 4-digit OTP, and prepares the response.',
+  redis: 'The application writes the OTP with a TTL to Redis over a standard TCP connection.',
+  record: 'Keploy, running in record mode, observes both the inbound HTTP traffic and outbound Redis network socket calls at the OS/Docker level.',
+  artifacts: 'Keploy saves the HTTP transaction to test-1.yml (with dynamic noise rules) and the Redis interaction to mocks.yml.',
+  replay: 'Running keploy test starts the application container, injects the original HTTP request, and serves Redis mocks automatically.',
+  result: 'Keploy compares the live server response against test-1.yml, ignoring dynamic noise fields like the OTP value and timestamp.',
 }
 
 export function FlowDiagram({
-  activeStep = 'observe',
+  activeStep = 'record',
   compact = false,
   stepNumber,
   stepTitle,
 }: FlowDiagramProps) {
-  const activeInfo = STEPS.find((s) => s.id === activeStep) || STEPS[1]
+  const activeInfo = STEPS.find((s) => s.id === activeStep) || STEPS[3]
 
-  // Render a compact, elegant banner for subsequent steps to prevent repetitive cognitive load
   if (compact) {
     return (
       <div className="flow-step-badge-banner" role="region" aria-label={`Current Step: ${activeInfo.label}`}>
         <div className="flow-badge-left">
           <span className="flow-badge-indicator">
-            {stepNumber || `STEP ${activeInfo.num} / 05`}
+            {stepNumber || `STEP ${activeInfo.num} / 07`}
           </span>
           <span className="flow-badge-title">
             {stepTitle || activeInfo.label}
           </span>
         </div>
-        <a href="#mental-model" className="flow-badge-link" aria-label="Jump to full mental model diagram">
+        <a href="#lifecycle-timeline" className="flow-badge-link" aria-label="Jump to complete lifecycle timeline">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
           </svg>
-          View Full Mental Model
+          View Complete Lifecycle
         </a>
       </div>
     )
   }
 
   return (
-    <div className="flow-diagram-container" id="mental-model" role="region" aria-label="Keploy Execution Flow Diagram">
+    <div className="flow-diagram-container" id="lifecycle-timeline" role="region" aria-label="Keploy Execution Flow Timeline">
       <div className="flow-diagram-header">
         <div className="flow-diagram-title">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
           </svg>
-          Interactive Mental Model: Request to Regression Test
+          The Keploy Lifecycle: From API Request to Replay
         </div>
         <span className="flow-step-tracker">
-          Click any stage to jump to instructions
+          Click any phase to navigate to that section
         </span>
       </div>
 
-      <nav className="flow-diagram-steps" aria-label="Mental model stage navigation">
+      <nav className="flow-diagram-steps timeline-steps" aria-label="Lifecycle stage navigation">
         {STEPS.map((step) => {
           const isActive = step.id === activeStep
           return (
@@ -133,7 +150,7 @@ export function FlowDiagram({
       </nav>
 
       <div className="flow-callout-explanation">
-        <strong>Stage Focus:</strong> {EXPLANATIONS[activeStep]}
+        <strong>Phase Focus:</strong> {EXPLANATIONS[activeStep]}
       </div>
     </div>
   )

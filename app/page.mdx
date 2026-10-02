@@ -1,48 +1,51 @@
-# From API Request to Regression Test
+# Record and Replay a Go API with Keploy
 
 <div className="subtitle">
-Learn Keploy by watching one real API interaction become a repeatable, zero-code regression test in Go.
+A practical tutorial on converting live HTTP traffic and Redis calls into deterministic, version-controlled regression tests without writing synthetic mock code.
 </div>
 
 <div className="hero-value-props">
   <span className="hero-tag">⚡ Real API Request</span>
   <span className="hero-tag-arrow">→</span>
+  <span className="hero-tag">📦 Redis Interaction</span>
+  <span className="hero-tag-arrow">→</span>
   <span className="hero-tag">👀 Captured by Keploy</span>
   <span className="hero-tag-arrow">→</span>
-  <span className="hero-tag">📄 Stored as Golden YAML</span>
+  <span className="hero-tag">📄 test-1.yml + mocks.yml</span>
   <span className="hero-tag-arrow">→</span>
-  <span className="hero-tag">🛡️ Replayed on CI</span>
+  <span className="hero-tag">🔁 Deterministic Replay</span>
 </div>
 
-<FlowDiagram activeStep="observe" />
+<FlowDiagram activeStep="record" />
 
 <TutorialProgress />
 
-Writing and maintaining backend regression tests is traditionally tedious. You write mock handlers, handcraft JSON fixtures, maintain synthetic test databases, and repeatedly update test assertions whenever internal schemas change.
+Traditional backend integration testing requires writing extensive boilerplate: spin up temporary test databases, handcraft mock handlers, curate brittle JSON fixtures, and continually update test assertions whenever endpoint schemas change.
 
-**Keploy flips this mental model.** Instead of writing tests before observing your app, Keploy sits alongside your running application, observes real HTTP traffic and downstream dependencies, and automatically generates reproducible test cases and mocks.
+**Keploy approaches testing from the opposite direction.** Instead of hand-authoring mock fixtures, Keploy sits on the network boundary of your application process or container, records real inbound HTTP requests and outbound I/O calls (such as Redis queries), and automatically generates deterministic test specifications (`test-1.yml`) and mock files (`mocks.yml`).
 
-In this tutorial, you will take a Go application, make a real HTTP request, record it with Keploy, replay it to verify correctness, and watch Keploy automatically catch an intentional regression.
+In this tutorial, you will walk through the entire lifecycle:
+1. Start a real Go Gin authentication service with a Redis dependency.
+2. Put Keploy into **record mode** to observe API traffic.
+3. Send real HTTP requests to generate an OTP verification flow.
+4. Inspect the generated test cases and understand why dynamic fields (OTP, dates) are categorized as noise.
+5. Replay the captured behavior with `keploy test`—running tests without depending on a live Redis instance.
 
 ---
 
-## Mental Model: Handcrafted Tests vs. Keploy
+<section id="what-we-are-building">
 
-<div className="mental-model-grid">
-  <div className="mental-card traditional">
-    <div className="mental-card-title">Traditional Testing</div>
-    <p>1. Manually write mock servers for databases and external HTTP APIs.</p>
-    <p>2. Handcraft JSON request fixtures and expected response structs.</p>
-    <p>3. Update test code every time an endpoint signature or schema changes.</p>
-  </div>
-  <div className="mental-card keploy">
-    <div className="mental-card-title">Keploy Workflow</div>
-    <p>1. Start your application binary wrapped with <code>keploy record</code>.</p>
-    <p>2. Send realistic traffic via curl, Postman, or automated end-to-end tests.</p>
-    <p>3. Keploy captures wire traffic & generates declarative test files and mocks.</p>
-    <p>4. Replay tests anytime in CI with <code>keploy test</code> without external mocks.</p>
-  </div>
-</div>
+## What We Are Building
+
+The tutorial uses a realistic Go authentication sample built with the **Gin** web framework and **Redis**.
+
+The service provides two core endpoints:
+- `GET /api/getVerificationCode?email=...&username=...`: Generates a random 4-digit OTP and stores it in Redis with an expiration TTL.
+- `POST /api/verifyCode`: Validates the submitted OTP against Redis.
+
+<ArchitectureDiagram />
+
+</section>
 
 ---
 
@@ -50,20 +53,21 @@ In this tutorial, you will take a Go application, make a real HTTP request, reco
 
 ## Prerequisites
 
-Before starting, ensure you have the following installed on your machine:
+Before starting, ensure you have the following installed on your development machine:
 
-1. **[Go 1.20+](https://go.dev/doc/install)** installed (`go version`).
-2. **[Keploy CLI](https://github.com/keploy/keploy)** installed on your system.
-3. **Linux / WSL2 (for Windows) / macOS with Docker** (Keploy utilizes eBPF and network interception for zero-code instrumentation).
+1. **[Docker & Docker Compose](https://docs.docker.com/get-docker/)**: Used to run Redis and containerized application builds.
+2. **[Go 1.20+](https://go.dev/doc/install)**: Required if compiling Go binaries locally (`go version`).
+3. **[Keploy CLI v2+](https://github.com/keploy/keploy)**: The test generation engine.
+4. **[Git & cURL](https://git-scm.com/)**: To clone sample code and exercise API endpoints.
 
-To install Keploy on Linux, macOS, or WSL:
+To install the Keploy CLI on Linux, macOS, or WSL2:
 
 ```bash
 curl --silent --location https://github.com/keploy/keploy/releases/latest/download/keploy_linux_amd64.tar.gz | tar xz -C /tmp
 sudo mv /tmp/keploy /usr/local/bin/keploy
 ```
 
-Verify your installation:
+Verify your Keploy installation:
 
 ```bash
 keploy --version
@@ -73,215 +77,251 @@ keploy --version
 
 ---
 
-<section id="step-1-setup">
+<section id="step-1-sample-app">
 
-## <span className="step-pill">Step 01</span> Run the Go Application
+## <span className="step-pill">Step 01</span> Get the Sample Application
 
-<FlowDiagram compact activeStep="api" stepNumber="STEP 01 / 05" stepTitle="Go Application Setup" />
+<FlowDiagram compact activeStep="gin" stepNumber="STEP 01 / 07" stepTitle="Clone Sample Application" />
 
-Let's create a minimal Go HTTP API using the popular [Gin web framework](https://gin-gonic.com/). This service accepts a URL shortcut payload and returns a short code identifier.
-
-Create a project directory with `main.go`:
-
-```go
-package main
-
-import (
-	"net/http"
-	"github.com/gin-gonic/gin"
-)
-
-type URLRequest struct {
-	URL string `json:"url" binding:"required"`
-}
-
-type URLResponse struct {
-	ID       string `json:"id"`
-	Original string `json:"url"`
-	Status   string `json:"status"`
-}
-
-func main() {
-	r := gin.Default()
-
-	// Health check endpoint
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "url-shortener"})
-	})
-
-	// Core API endpoint
-	r.POST("/api/shorten", func(c *gin.Context) {
-		var req URLRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
-			return
-		}
-
-		// Simple deterministic hash/ID generation for demonstration
-		c.JSON(http.StatusCreated, URLResponse{
-			ID:       "kp-9821",
-			Original: req.URL,
-			Status:   "active",
-		})
-	})
-
-	r.Run(":8080")
-}
-```
-
-Initialize your Go module and build the standalone binary:
+Clone the official Keploy Go Gin + Redis sample repository to your local machine:
 
 ```bash
-go mod init example/keploy-demo
-go get github.com/gin-gonic/gin
-go build -o app main.go
+git clone https://github.com/keploy/samples-go.git
+cd samples-go/gin-redis
 ```
 
-<Callout type="why" title="Why pre-compile the binary?">
-Compiling the Go application into a standalone binary (<code>./app</code>) enables Keploy to attach directly to the process execution boundary, accurately capturing network sockets without needing source code modifications or custom SDK wrappers.
-</Callout>
+### What is in this repository?
+- `main.go`: The Gin HTTP server containing routing logic for OTP generation and verification.
+- `controller/`: Handlers for generating verification tokens and interacting with Redis.
+- `docker-compose.yml`: Compose specification declaring the Redis service and network.
+- `Dockerfile`: Multi-stage Docker build producing the production container image.
 
 </section>
 
 ---
 
-<section id="step-2-record">
+<section id="step-2-start-redis">
 
-## <span className="step-pill">Step 02</span> Record Traffic with Keploy
+## <span className="step-pill">Step 02</span> Start Redis
 
-<FlowDiagram compact activeStep="observe" stepNumber="STEP 02 / 05" stepTitle="Keploy Observes Traffic" />
+<FlowDiagram compact activeStep="redis" stepNumber="STEP 02 / 07" stepTitle="Start Redis Cache" />
 
-Now, instead of running the binary directly, launch it wrapped in Keploy's `record` command.
+Start the Redis dependency in detached mode using Docker Compose:
 
 ```bash
-sudo -E keploy record -c "./app"
+docker compose up -d redis
+```
+
+<Callout type="why" title="Why must Redis be running during record mode?">
+During recording, the Go application communicates with a <strong>real</strong> Redis instance. Keploy listens to the TCP socket traffic between Gin and Redis, intercepting commands like <code>SET email:otp 2121 EX 300</code> and caching the real response into <code>mocks.yml</code>. Once recorded, you will no longer need Redis running to execute your tests.
+</Callout>
+
+Verify that Redis is healthy and accepting connections:
+
+```bash
+docker ps --filter "name=redis"
+```
+
+</section>
+
+---
+
+<section id="step-3-build-app">
+
+## <span className="step-pill">Step 03</span> Build the Application Container Image
+
+<FlowDiagram compact activeStep="gin" stepNumber="STEP 03 / 07" stepTitle="Build Application Image" />
+
+Build the Docker container image for the Gin application:
+
+```bash
+docker build -t gin-app:1.0 .
+```
+
+### What this image represents:
+This container encapsulates the compiled Go binary along with its environment configurations. Running the application inside Docker ensures a consistent, reproducible execution boundary for Keploy to attach network proxies and packet monitors.
+
+</section>
+
+---
+
+<section id="step-4-start-recording">
+
+## <span className="step-pill">Step 04</span> Start Recording with Keploy
+
+<FlowDiagram compact activeStep="record" stepNumber="STEP 04 / 07" stepTitle="Activate Keploy Record Mode" />
+
+Launch the application container wrapped inside Keploy's `record` command:
+
+```bash
+keploy record -c "docker run -p 3001:3001 --network gin-redis_default --name ginRedisApp gin-app:1.0"
 ```
 
 ### What is happening behind the scenes?
 
 When you execute `keploy record`:
-1. Keploy spins up an interception layer (using eBPF on Linux/WSL).
-2. It executes your binary `./app` as a child process.
-3. Keploy listens for inbound HTTP requests and outbound network calls (Postgres, Redis, HTTP APIs, gRPC).
-4. The console will display: `Keploy is listening on :8080 and ready to capture traffic.`
+1. Keploy creates an interception layer at the network and process boundary.
+2. It executes your containerized application (`gin-app:1.0`) connected to the shared Docker network.
+3. Keploy monitors port `3001` for inbound HTTP traffic and tracks outgoing TCP sockets connected to Redis (port `6379`).
+4. The terminal will log that Keploy is listening and ready to record user interactions.
 
-<Callout type="info" title="Zero Code Changes">
-Notice that we did not import any Keploy libraries into <code>main.go</code>. Keploy operates at the transport layer, meaning your production code remains completely free of vendor testing code.
+<Callout type="info" title="Zero Source Code Intrusion">
+Notice that we did not import SDKs, decorate Go structs, or modify any handlers in <code>main.go</code>. Keploy operates transparently at the I/O layer.
 </Callout>
 
 </section>
 
 ---
 
-<section id="step-3-traffic">
+<section id="step-5-exercise-api">
 
-## <span className="step-pill">Step 03</span> Make a Real API Request to Generate Test Cases
+## <span className="step-pill">Step 05</span> Exercise the API to Capture Behavior
 
-<FlowDiagram compact activeStep="request" stepNumber="STEP 03 / 05" stepTitle="Trigger Real API Traffic" />
+<FlowDiagram compact activeStep="request" stepNumber="STEP 05 / 07" stepTitle="Trigger Real API Traffic" />
 
-With Keploy recording in the first terminal, open a second terminal and trigger an actual HTTP request against the running service:
+Open a second terminal window. We will make HTTP requests against the running service. These real requests are the exact events Keploy will observe and convert into regression test cases.
+
+### 1. Request an OTP Verification Code
 
 ```bash
-curl --request POST \
-  --url http://localhost:8080/api/shorten \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "url": "https://keploy.io/docs"
-  }'
+curl --location 'localhost:3001/api/getVerificationCode?email=dev@example.com&username=shivam'
 ```
 
-### Expected Response:
+**Expected Response:**
 
 ```json
 {
-  "id": "kp-9821",
-  "url": "https://keploy.io/docs",
-  "status": "active"
+  "data": {
+    "otp": 2121
+  },
+  "msg": "OTP sent successfully"
 }
 ```
 
-<section id="step-3-yaml">
+### 2. Verify the OTP Code
 
-### What Keploy Generates:
+Send the verification request with the generated OTP and email payload:
 
-Switch back to the terminal running `keploy record`. You will see Keploy log:
+```bash
+curl --location 'localhost:3001/api/verifyCode' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+    "otp": 2121,
+    "email": "dev@example.com"
+  }'
+```
+
+**Expected Response:**
+
+```json
+{
+  "data": null,
+  "msg": "OTP verified successfully"
+}
+```
+
+Switch back to the terminal running `keploy record`. You will see Keploy log that it captured the incoming HTTP transactions and their corresponding Redis read/write calls:
 
 ```text
-🐰 Keploy captured test case: test-1
-📁 Stored test case in: ./keploy/test-set-0/tests/test-1.yaml
+🐰 Keploy captured test case: test-1 (POST /api/getVerificationCode)
+🐰 Keploy captured test case: test-2 (POST /api/verifyCode)
+📁 Stored test cases in: ./keploy/test-set-0/tests/
+📁 Stored dependency mocks in: ./keploy/test-set-0/mocks.yml
 ```
 
-Stop the recording session by pressing `Ctrl + C`.
-
-Inspect the generated test file (`keploy/test-set-0/tests/test-1.yaml`):
-
-```yaml
-version: api.keploy.io/v1beta1
-kind: Http
-name: test-1
-spec:
-  metadata: {}
-  req:
-    method: POST
-    proto_major: 1
-    proto_minor: 1
-    url: /api/shorten
-    header:
-      Content-Type: application/json
-    body: '{"url":"https://keploy.io/docs"}'
-  resp:
-    status_code: 201
-    header:
-      Content-Type: application/json; charset=utf-8
-    body: '{"id":"kp-9821","url":"https://keploy.io/docs","status":"active"}'
-  objects: []
-  assertions:
-    noise: []
-  created: 1717200000
-```
-
-<Callout type="why" title="Why is this format powerful?">
-The test case is stored as clear, declarative YAML. It records the exact headers, body, status code, and any downstream mock calls. It is fully version-controllable in Git and human-readable.
-</Callout>
-
-</section>
+Stop the recording session by pressing `Ctrl + C`. Keploy will gracefully shut down the container and flush artifacts to disk.
 
 </section>
 
 ---
 
-<section id="step-4-replay">
+<section id="step-6-inspect-artifacts">
 
-## <span className="step-pill">Step 04</span> Replay the Test with `keploy test`
+## <span className="step-pill">Step 06</span> Inspect What Keploy Generated
 
-<FlowDiagram compact activeStep="replay" stepNumber="STEP 04 / 05" stepTitle="Deterministic Test Replay" />
+<FlowDiagram compact activeStep="artifacts" stepNumber="STEP 06 / 07" stepTitle="Understand Test & Mock Artifacts" />
 
-Now verify that Keploy can execute and validate this test automatically without manual intervention.
+Keploy stores all captured test specifications in human-readable, declarative YAML files under the `keploy/` directory:
+- `test-1.yml`: The HTTP test case recording request parameters, status code, response body, and assertions.
+- `mocks.yml`: The captured Redis interactions (commands like `SET`, `GET`, connection handshakes).
 
-Run the test suite:
+### Annotated Test Spec (`test-1.yml`)
+
+<AnnotatedYaml title="keploy/test-set-0/tests/test-1.yml" />
+
+### Understanding the `assertions.noise` Section
+
+A critical challenge with automated testing of real applications is **non-deterministic data**. 
+
+In our authentication endpoint:
+- The **OTP** (`2121`) changes randomly on every single invocation.
+- The HTTP **Date** header updates continuously.
+
+If a test framework performed a strict byte-for-byte diff against the original response, every subsequent test run would fail falsely. 
+
+Keploy detects or allows configuring dynamic paths under `assertions.noise`. When replaying tests, Keploy verifies that the schema structure and static fields match, while ignoring the unpredictable noise values.
+
+### Inspecting Redis Mocks (`mocks.yml`)
+
+```yaml
+version: api.keploy.io/v1beta1
+kind: Generic
+name: mock-0
+spec:
+  metadata:
+    type: redis
+    operation: SET
+  req:
+    data: "SET dev@example.com:otp 2121 EX 300"
+  resp:
+    data: "OK"
+```
+
+<Callout type="why" title="What does mocks.yml do during tests?">
+When replaying tests, the application will attempt to talk to Redis. Instead of routing traffic to a live Redis server, Keploy intercepts the outgoing TCP call and returns the recorded <code>"OK"</code> response directly. This eliminates the need for test databases in CI pipelines.
+</Callout>
+
+</section>
+
+---
+
+<section id="step-7-replay-test">
+
+## <span className="step-pill">Step 07</span> Replay the Behavior with `keploy test`
+
+<FlowDiagram compact activeStep="replay" stepNumber="STEP 07 / 07" stepTitle="Execute Replay Test Suite" />
+
+Now verify that the captured behavior can be replayed deterministically without manual test scripts.
+
+Execute the test command:
 
 ```bash
-sudo -E keploy test -c "./app" --delay 2
+keploy test -c "docker run -p 3001:3001 --rm --network gin-redis_default --name ginRedisApp gin-app:1.0" --delay 10
 ```
+
+<Callout type="info" title="Why the --delay 10 flag?">
+The <code>--delay 10</code> flag gives the Docker container up to 10 seconds to finish booting the Go binary, establishing internal network routes, and binding port 3001 before Keploy sends the replayed requests.
+</Callout>
 
 ### What Keploy does during test replay:
 
-1. Starts `./app` in a controlled test harness.
-2. Injects the recorded HTTP request (`POST /api/shorten`) into the app.
-3. If your app had external dependencies (like MongoDB or Redis), Keploy automatically intercepts those calls and returns the recorded responses (no test databases needed).
-4. Compares the live HTTP response against the recorded YAML response.
+1. Starts the application container in a sandboxed test harness.
+2. Intercepts the application's outbound Redis connections and binds them to `mocks.yml`.
+3. Injects the recorded HTTP requests (`/api/getVerificationCode`, `/api/verifyCode`) in sequence.
+4. Compares live responses against `test-1.yml` and `test-2.yml`, filtering out defined noise fields.
 
-### Test Output:
+### Test Execution Output:
 
 ```text
 🐰 Starting test execution for test-set-0 ...
 
-  [PASS] test-1 (POST /api/shorten) - Status: 201, Duration: 12ms
+  [PASS] test-1 (GET /api/getVerificationCode) - Status: 200 (Duration: 18ms)
+  [PASS] test-2 (POST /api/verifyCode) - Status: 200 (Duration: 14ms)
 
 --------------------------------------------------------------------
 Test Suite Summary:
-  Total tests: 1
-  Passed: 1
+  Total tests: 2
+  Passed: 2
   Failed: 0
 --------------------------------------------------------------------
 🎉 All tests passed successfully!
@@ -291,134 +331,115 @@ Test Suite Summary:
 
 ---
 
-<section id="step-5-regression">
+<section id="step-8-mental-model">
 
-## <span className="step-pill">Step 05</span> Simulate a Regression and Watch Keploy Catch It
+## <span className="step-pill">Step 08</span> The Core Mental Model
 
-To see the real value of regression testing, let's introduce an intentional breaking change in `main.go`.
-
-Suppose an engineer inadvertently changes the ID prefix format from `kp-` to `short-`:
-
-```go
-// Breaking change in main.go
-c.JSON(http.StatusCreated, URLResponse{
-    ID:       "short-9821", // Was previously "kp-9821"
-    Original: req.URL,
-    Status:   "active",
-})
-```
-
-Recompile the application binary:
-
-```bash
-go build -o app main.go
-```
-
-Re-run the Keploy test suite:
-
-```bash
-sudo -E keploy test -c "./app" --delay 2
-```
-
-### Keploy catches the diff immediately:
-
-```text
-🐰 Starting test execution for test-set-0 ...
-
-  [FAIL] test-1 (POST /api/shorten)
-  
-  Diff Details:
-  -------------------------------------------------------------
-  Field: body.id
-  Expected: "kp-9821"
-  Actual:   "short-9821"
-  -------------------------------------------------------------
-
-Test Suite Summary:
-  Total tests: 1
-  Passed: 0
-  Failed: 1
-```
-
-<Callout type="success" title="Instant Regression Safety">
-Without writing a single assertion function or mocking library by hand, Keploy pinpointed the exact JSON field that deviated from the expected API contract.
-</Callout>
+<div className="mental-model-grid">
+  <div className="mental-card traditional">
+    <div className="mental-card-title">
+      <span>Record Phase (Live Mode)</span>
+    </div>
+    <p><strong>Real Client Request</strong> → <strong>Gin Application</strong> → <strong>Real Redis Instance</strong></p>
+    <p>Keploy listens on the network boundary, recording the complete request/response lifecycle along with all downstream socket transactions into version-controlled YAML files.</p>
+    <div className="next-step-link-cta">Live Network Capture →</div>
+  </div>
+  <div className="mental-card keploy">
+    <div className="mental-card-title">
+      <span>Replay Phase (Test Mode)</span>
+    </div>
+    <p><strong>Keploy Injected Request</strong> → <strong>Gin Application</strong> → <strong>Mocked Redis (via mocks.yml)</strong></p>
+    <p>Keploy replays the exact captured request, serves recorded Redis responses without a real database, and asserts response correctness while filtering dynamic noise.</p>
+    <div className="next-step-link-cta">Deterministic Replay & Assertion →</div>
+  </div>
+</div>
 
 </section>
-
----
-
-## What Just Happened? (Mental Model Recap)
-
-1. **Capture over Composition:** Real client traffic represents the most authentic specification of your system's behavior.
-2. **Zero Code Intrusion:** Your Go codebase stays clean without test-specific routing or intrusive SDKs.
-3. **Automated Mocks:** Keploy captures downstream I/O calls alongside the HTTP test, ensuring tests remain isolated and deterministic in CI/CD.
-4. **Git-Native Test Assets:** Test suites exist as YAML files that can be reviewed in Pull Requests just like application code.
 
 ---
 
 <section id="troubleshooting">
 
-## Troubleshooting & Gotchas
+## Troubleshooting & Common Mistakes
 
-<GotchaAccordion title="Gotcha 1: Dynamic Timestamps, Dates, and UUIDs" defaultOpen={true}>
-<p>If your API returns non-deterministic fields like timestamps (<code>created_at: 1717200000</code>) or random UUIDs, Keploy allows you to mark these JSON paths under the <code>assertions.noise</code> section in the YAML test file so they are ignored during diff comparison.</p>
+<GotchaAccordion title="Mistake 1: Redis is not running or unreachable on Docker network" defaultOpen={true}>
+<p>If the application crashes on startup with connection refused errors, make sure you ran <code>docker compose up -d redis</code> and that both containers are attached to the same Docker network (e.g. <code>gin-redis_default</code>).</p>
 </GotchaAccordion>
 
-<GotchaAccordion title="Gotcha 2: Understanding the --delay Flag">
-<p>The <code>--delay 2</code> flag gives your application 2 seconds to finish bootstrapping, establishing database connections, and binding ports before Keploy sends test traffic. For larger applications or slower container startup environments, increase this to <code>--delay 5</code>.</p>
+<GotchaAccordion title="Mistake 2: Test times out before app is ready (--delay flag)">
+<p>If Keploy sends requests before Gin binds port 3001, you may see connection errors. Increase the delay parameter (e.g. <code>--delay 10</code> or <code>--delay 15</code>) to give containerized apps adequate bootstrap time.</p>
 </GotchaAccordion>
 
-<GotchaAccordion title="Gotcha 3: Linux Kernel Permissions and eBPF">
-<p>Because Keploy intercepts socket syscalls at the OS level using eBPF, running <code>sudo -E keploy ...</code> is required on Linux/WSL to ensure appropriate kernel tracing capabilities.</p>
+<GotchaAccordion title="Mistake 3: Port 3001 conflict with existing local processes">
+<p>If another application is already listening on port 3001, Docker will fail to bind the port. Stop competing services or adjust port mapping in the command.</p>
+</GotchaAccordion>
+
+<GotchaAccordion title="Mistake 4: Running Keploy commands from the wrong working directory">
+<p>Keploy reads and writes artifacts relative to the current directory (<code>./keploy/</code>). Ensure you execute all commands from the root of the <code>gin-redis</code> project directory.</p>
 </GotchaAccordion>
 
 </section>
 
 ---
 
-## Next Steps
+<section id="what-to-explore-next">
 
-Now that you've completed the core quickstart workflow:
+## What to Explore Next
+
+Once you have mastered the basic record-and-replay workflow, experiment with modifying behavior:
 
 <div className="next-steps-grid">
-  <a href="https://keploy.io/docs/server/quickstart/gin-mongo/" target="_blank" rel="noreferrer noopener" className="next-step-card">
+  <a href="https://keploy.io/docs/server/concepts/general-concepts/filtering-noisy-fields/" target="_blank" rel="noreferrer noopener" className="next-step-card">
     <div className="next-step-title">
-      <span>🍃 Database Mocking with MongoDB</span>
+      <span>Modify Noisy Fields in test-1.yml</span>
       <span aria-hidden="true">→</span>
     </div>
     <div className="next-step-desc">
-      Connect a real MongoDB database and see Keploy automatically generate <code>mocks.yaml</code> without synthetic seed scripts.
+      Try manually adding or removing fields from <code>assertions.noise</code> to observe how Keploy handles unpredictable timestamps or tokens.
     </div>
+    <div className="next-step-link-cta">View Concept Docs →</div>
+  </a>
+
+  <a href="https://keploy.io/docs/server/concepts/general-concepts/mocking/" target="_blank" rel="noreferrer noopener" className="next-step-card">
+    <div className="next-step-title">
+      <span>Edit mocks.yml to Test Edge Cases</span>
+      <span aria-hidden="true">→</span>
+    </div>
+    <div className="next-step-desc">
+      Edit a recorded Redis mock to return an error string or simulated timeout to test application error-handling resilience.
+    </div>
+    <div className="next-step-link-cta">View Mocking Guide →</div>
   </a>
 
   <a href="https://keploy.io/docs/ci-cd/github-actions/" target="_blank" rel="noreferrer noopener" className="next-step-card">
     <div className="next-step-title">
-      <span>🔄 GitHub Actions CI/CD Integration</span>
+      <span>Integrate with GitHub Actions</span>
       <span aria-hidden="true">→</span>
     </div>
     <div className="next-step-desc">
-      Add <code>keploy test</code> to your pull request workflows to catch API contract regressions before merging.
+      Add <code>keploy test</code> into your continuous integration workflow to catch regressions on every pull request.
     </div>
-  </a>
-
-  <a href="https://keploy.io/docs/server/concepts/general-concepts/filtering-noisy-fields/" target="_blank" rel="noreferrer noopener" className="next-step-card">
-    <div className="next-step-title">
-      <span>🎯 Noisy Field Filtering</span>
-      <span aria-hidden="true">→</span>
-    </div>
-    <div className="next-step-desc">
-      Configure advanced noise filters for JWT tokens, dynamic session IDs, and rotating credentials.
-    </div>
+    <div className="next-step-link-cta">View CI/CD Setup →</div>
   </a>
 
   <a href="https://github.com/keploy/keploy" target="_blank" rel="noreferrer noopener" className="next-step-card">
     <div className="next-step-title">
-      <span>⭐ Explore Keploy Open Source</span>
+      <span>Star Keploy on GitHub</span>
       <span aria-hidden="true">→</span>
     </div>
     <div className="next-step-desc">
-      Explore the core repository architecture, contribute to the Go agent, and join the community on Slack.
+      Explore the open-source eBPF network drivers, inspect architecture docs, and join the community on Slack.
     </div>
+    <div className="next-step-link-cta">Explore Repository →</div>
   </a>
 </div>
+
+</section>
+
+---
+
+## Conclusion
+
+Writing comprehensive regression test suites for distributed services does not require spending hours handcrafting synthetic database fixtures and brittle mocks.
+
+By recording real interactions once and replaying them deterministically as version-controlled YAML tests, Keploy allows Go developers to achieve deep regression test coverage with zero production code changes.

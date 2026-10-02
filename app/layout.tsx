@@ -1,25 +1,22 @@
 import type { Metadata } from 'next'
-import '@/styles/globals.css'
+import './globals.css'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { TableOfContents } from '@/components/TableOfContents'
 
-// =============================================================================
-// SUBMISSION CONFIGURATION:
-// Insert your public GitHub repository URL here if already pushed.
-// =============================================================================
-const GITHUB_REPO_URL = 'https://github.com/keploy/keploy' // TODO: Replace with your assignment repo URL (e.g. https://github.com/your-username/keploy-go-tutorial)
+const GITHUB_REPO_URL = 'https://github.com/keploy/keploy'
 
 export const metadata: Metadata = {
-  title: 'From API Request to Regression Test | Keploy Go Tutorial',
+  title: 'Record and Replay a Go API with Keploy | Developer Guide',
   description:
-    'Learn how Keploy turns real API interactions into repeatable regression tests with a practical Go quickstart.',
-  keywords: ['Keploy', 'Golang', 'API Testing', 'Regression Testing', 'eBPF', 'Test Generation', 'DevRel'],
-  authors: [{ name: 'Keploy DevRel Candidate' }],
+    'A practical tutorial on converting live Go Gin + Redis traffic into deterministic regression tests and mocks with Keploy.',
+  keywords: ['Keploy', 'Golang', 'Gin', 'Redis', 'API Testing', 'Regression Testing', 'DevRel', 'Mocking'],
+  authors: [{ name: 'Keploy DevRel Submission' }],
   openGraph: {
-    title: 'From API Request to Regression Test | Keploy Go Tutorial',
+    title: 'Record and Replay a Go API with Keploy | Developer Guide',
     description:
-      'Learn how Keploy turns real API interactions into repeatable regression tests with a practical Go quickstart.',
+      'A practical tutorial on converting live Go Gin + Redis traffic into deterministic regression tests and mocks with Keploy.',
     type: 'article',
-    siteName: 'Keploy Technical Documentation',
+    siteName: 'Keploy Documentation',
   },
 }
 
@@ -50,13 +47,13 @@ export default function RootLayout({
         <header className="site-header">
           <div className="doc-container site-header-inner">
             <div className="logo-group">
-              <a href="#" className="logo-badge" aria-label="From API Request to Regression Test Home">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#ff6b35" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M2 17L12 22L22 17" stroke="#ff6b35" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M2 12L12 17L22 12" stroke="#ff6b35" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+              <a href="#" className="logo-badge" aria-label="Record and Replay a Go API with Keploy Home">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#ff914d" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2 17L12 22L22 17" stroke="#ff914d" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2 12L12 17L22 12" stroke="#ff914d" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                <span>keploy</span>
+                <span>Keploy</span>
               </a>
               <span className="logo-tag">Go Quickstart</span>
             </div>
@@ -80,7 +77,28 @@ export default function RootLayout({
         </header>
 
         <main className="doc-container prose-article">
-          {children}
+          <div className="doc-breadcrumbs">
+            <a href="https://keploy.io/docs/" target="_blank" rel="noreferrer noopener">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              </svg>
+              <span>Docs</span>
+            </a>
+            <span className="doc-breadcrumbs-separator">/</span>
+            <a href="https://keploy.io/docs/quickstart/golang-filter/" target="_blank" rel="noreferrer noopener">
+              <span>Integration Testing</span>
+            </a>
+            <span className="doc-breadcrumbs-separator">/</span>
+            <span className="doc-breadcrumb-pill">QuickStarts</span>
+          </div>
+
+          <div className="doc-layout-grid">
+            <div className="doc-content-column">
+              {children}
+            </div>
+            <TableOfContents />
+          </div>
         </main>
 
         <footer className="site-footer">
@@ -89,10 +107,24 @@ export default function RootLayout({
               Built for the <strong>Keploy DevRel Candidate Assignment</strong>
             </div>
             <div>
-              Tutorial based on official Keploy Go Quickstart (Gin + Sample Endpoints)
+              Gin + Redis Quickstart &middot; Single-page static documentation
             </div>
           </div>
         </footer>
+
+        {/* Keploy Floating Chat / Help Widget Icon */}
+        <a
+          href="https://keploy.io/slack"
+          target="_blank"
+          rel="noreferrer noopener"
+          className="floating-widget-btn"
+          aria-label="Join Keploy Slack community for help"
+          title="Join Keploy Slack community"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </a>
       </body>
     </html>
   )

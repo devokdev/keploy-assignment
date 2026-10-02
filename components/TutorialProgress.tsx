@@ -9,15 +9,18 @@ interface NavStep {
 }
 
 const NAV_STEPS: NavStep[] = [
-  { id: 'step-1-setup', label: 'Setup', num: '01' },
-  { id: 'step-2-record', label: 'Record', num: '02' },
-  { id: 'step-3-traffic', label: 'Capture', num: '03' },
-  { id: 'step-4-replay', label: 'Replay', num: '04' },
-  { id: 'step-5-regression', label: 'Break It', num: '05' },
+  { id: 'step-1-sample-app', label: 'Sample App', num: '01' },
+  { id: 'step-2-start-redis', label: 'Start Redis', num: '02' },
+  { id: 'step-3-build-app', label: 'Build App', num: '03' },
+  { id: 'step-4-start-recording', label: 'Record', num: '04' },
+  { id: 'step-5-exercise-api', label: 'Exercise API', num: '05' },
+  { id: 'step-6-inspect-artifacts', label: 'Inspect YAML', num: '06' },
+  { id: 'step-7-replay-test', label: 'Replay Tests', num: '07' },
+  { id: 'step-8-mental-model', label: 'Mental Model', num: '08' },
 ]
 
 export function TutorialProgress() {
-  const [activeId, setActiveId] = useState<string>('step-1-setup')
+  const [activeId, setActiveId] = useState<string>('step-1-sample-app')
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -43,8 +46,8 @@ export function TutorialProgress() {
   }, [])
 
   return (
-    <nav className="tutorial-progress-bar" aria-label="Tutorial Progress Navigation">
-      <div className="tutorial-progress-label">TUTORIAL STEPS</div>
+    <nav className="tutorial-progress-bar" aria-label="Tutorial Progress Quick Navigation">
+      <div className="tutorial-progress-label">QUICK NAVIGATION</div>
       <div className="tutorial-progress-items">
         {NAV_STEPS.map((step) => {
           const isActive = activeId === step.id

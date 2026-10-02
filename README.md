@@ -1,37 +1,43 @@
-# From API Request to Regression Test
+# Record and Replay a Go API with Keploy
 
-A high-polish, single-page developer documentation and tutorial explaining how **Keploy** transforms real Go API traffic into repeatable, zero-code regression tests.
+A polished, single-page developer tutorial demonstrating how to convert live Go (Gin) + Redis traffic into deterministic, zero-code regression tests and mocks with Keploy.
 
-Built as the final submission for the **Keploy DevRel Candidate Assignment**.
-
----
-
-## 🎯 What This Project Is
-
-This repository contains an MDX-powered documentation experience titled **"From API Request to Regression Test"**. 
-
-It is designed with a strict developer-first ethos:
-- **Mental-Model First**: Emphasizes *why* Keploy records and replays traffic at the transport/process layer instead of requiring manual synthetic test authoring.
-- **Zero Bloat & Native Web Standards**: Uses native HTML `<details>`/`<summary>` accordions, CSS custom properties, and `IntersectionObserver` navigation without heavy third-party UI libraries.
-- **Interactive Stages**: Clickable mental-model stages that smoothly navigate to corresponding steps.
-- **Lightweight Progress Navigation**: Clean sticky/header progress tracker reflecting active section position.
-- **Accessible Interactions**: Functional copy buttons with feedback, theme toggle with zero hydration flash, and accessible ARIA attributes.
-- **Fully Static**: Built using Next.js App Router with MDX support and static output export ready for immediate Vercel deployment.
+Built for the **Keploy DevRel Candidate Assignment**.
 
 ---
 
-## 🔗 Public Repository Configuration
+## 🎯 What This Tutorial Teaches
 
-In `app/layout.tsx`:
-```typescript
-// Insert your public assignment repository URL:
-const GITHUB_REPO_URL = 'https://github.com/your-username/keploy-go-tutorial'
-```
-*(By default points to the official Keploy GitHub if not yet configured).*
+This guide explains the complete record-to-replay testing lifecycle:
+1. **Mental Model First**: Explains how Keploy captures network socket traffic at the transport boundary without modifying Go source code or inserting SDKs.
+2. **Step-by-Step Execution**:
+   - Starting the Redis dependency via Docker Compose
+   - Building the Go Gin application container
+   - Running `keploy record` to intercept wire calls
+   - Exercising the OTP verification API via cURL
+   - Inspecting generated test specs (`test-1.yml`) and dependency mocks (`mocks.yml`)
+   - Understanding why dynamic values (random OTPs, dates) are isolated under `assertions.noise`
+   - Replaying tests with `keploy test` without needing a live Redis database
+3. **Interactive & Accessible UI**:
+   - Interactive 7-phase Keploy lifecycle flow diagram
+   - System topology diagram (cURL → Gin → Redis)
+   - Annotated YAML inspector with tree schema breakdown highlighting dynamic noise fields
+   - Subtle copy-to-clipboard buttons with immediate feedback
+   - Zero-flash Light/Dark theme toggle persisting user preferences
+   - Lightweight `IntersectionObserver` progress navigation
 
 ---
 
-## 🚀 Getting Started Locally
+## 🛠️ Tech Stack
+
+- **Framework**: [Next.js](https://nextjs.org/) (App Router, Static Export)
+- **Authoring**: [MDX](https://nextjs.org/docs/app/building-your-application/configuring/mdx) (`@next/mdx`)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: Native CSS tokens (restrained editorial aesthetic, 760px reading column, zero bloated component libraries)
+
+---
+
+## 🚀 Running Locally
 
 ### Prerequisites
 - Node.js 18.17+ or 20+
@@ -45,63 +51,60 @@ cd keploy-go-tutorial
 
 # Install dependencies
 npm install
-```
 
-### Run Development Server
-```bash
+# Start local dev server
 npm run dev
 ```
+
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
 ## 📦 Production Build
 
-To test the production build locally:
-
 ```bash
 npm run build
 ```
 
-This compiles the Next.js app and generates static HTML/CSS/JS artifacts in `.next/` / `out/`.
+Builds static artifacts into `.next/` / `out/`, verified for static hosting.
 
 ---
 
 ## ☁️ Deployment to Vercel
 
-1. Push this repository to a public GitHub repository.
-2. Go to [vercel.com/new](https://vercel.com/new) and import your repository.
-3. Keep default settings (Framework: Next.js).
+1. Push your repository to GitHub.
+2. Connect your repository on [Vercel](https://vercel.com/).
+3. Framework preset: **Next.js** (default settings).
 4. Click **Deploy**.
 
 ---
 
-## 🏗️ Architecture & Clean Structure
+## 📂 Project Structure
 
 ```text
 ├── app/
-│   ├── layout.tsx             # Root layout with SEO, OpenGraph metadata, Theme context
-│   └── page.mdx               # The hero tutorial content written in pure MDX
+│   ├── layout.tsx             # Root HTML layout with SEO metadata & theme script
+│   └── page.mdx               # Primary tutorial authored in MDX
 ├── components/
-│   ├── Callout.tsx            # Educational callout boxes (Why, Info, Success, Gotchas)
-│   ├── CodeBlock.tsx          # Syntax block wrapper with copy feedback
-│   ├── CopyButton.tsx         # Clipboard copy button with accessible state and fallbacks
-│   ├── FlowDiagram.tsx        # Interactive mental model diagram & compact step banners
-│   ├── GotchaAccordion.tsx    # Native accessible details/summary accordion
-│   ├── ThemeToggle.tsx        # Dark / Light theme toggle with zero hydration flash
-│   └── TutorialProgress.tsx   # Lightweight IntersectionObserver tutorial progress bar
+│   ├── AnnotatedYaml.tsx      # Side-by-side YAML inspector with noise annotations
+│   ├── ArchitectureDiagram.tsx# System architecture component (Client -> Gin -> Redis)
+│   ├── Callout.tsx            # Educational callout boxes (Why, Info, Success, Warning)
+│   ├── CodeBlock.tsx          # Code block container with copy button
+│   ├── CopyButton.tsx         # Accessible clipboard copy button with feedback
+│   ├── FlowDiagram.tsx        # 7-stage Keploy execution flow timeline
+│   ├── GotchaAccordion.tsx    # Native accessible <details>/<summary> accordion
+│   ├── ThemeToggle.tsx        # Light/Dark mode toggle with localStorage persistence
+│   └── TutorialProgress.tsx   # Lightweight scroll-position progress tracker
 ├── styles/
-│   └── globals.css            # Clean CSS design system, typography tokens, and responsive layout
-├── mdx-components.tsx         # Next.js MDX integration mapping
-├── next.config.mjs            # Next.js MDX configuration & static export
-├── tsconfig.json              # Strict TypeScript configuration
-└── package.json               # Minimal, justified dependencies
+│   └── globals.css            # Restrained design system & typography tokens
+├── mdx-components.tsx         # MDX component bindings
+├── next.config.mjs            # Next.js MDX & static output export configuration
+├── tsconfig.json              # Strict TypeScript config
+└── package.json               # Minimal dependency footprint
 ```
 
 ---
 
-## 💡 Key Design & DevRel Decisions
+## 📝 Editorial Notes
 
-1. **"Teach Once, Reinforce Lightly"**: Full 5-card diagram presented at the hero for high conceptual clarity, followed by compact step badges (`STEP 0X / 05`) on subsequent steps to prevent repetitive visual clutter.
-2. **Pedagogical Mental Model**: Each section explains what command is being executed, why it is executed, what happens behind the scenes, and what the expected output is.
-3. **Accessibility**: Full semantic HTML tags, keyboard navigation support, and ARIA labels.
+This tutorial is an original, pedagogical guide based on the official Keploy Go Gin + Redis quickstart. It focuses on the *why* behind every command, explaining eBPF socket capture, automated Redis mocking, and noise filtration for unpredictable data.
