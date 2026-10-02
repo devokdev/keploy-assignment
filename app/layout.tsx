@@ -3,7 +3,8 @@ import './globals.css'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { TableOfContents } from '@/components/TableOfContents'
 
-const GITHUB_REPO_URL = 'https://github.com/keploy/keploy'
+const GITHUB_REPO_URL = 'https://github.com/devokdev/keploy-assignment'
+const KEPLOY_DOCS_URL = 'https://keploy.io/docs/'
 
 export const metadata: Metadata = {
   title: 'Record and Replay a Go API with Keploy | Developer Guide',
@@ -59,6 +60,19 @@ export default function RootLayout({
             </div>
 
             <div className="header-actions">
+              <a
+                href={KEPLOY_DOCS_URL}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="header-link"
+                aria-label="Keploy Documentation (opens in new tab)"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                </svg>
+                <span>Keploy Docs</span>
+              </a>
               <a
                 href={GITHUB_REPO_URL}
                 target="_blank"
