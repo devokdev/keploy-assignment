@@ -1,58 +1,72 @@
-# Record and Replay a Go API with Keploy
+# Record & Replay a Go API with Keploy
 
-A polished, single-page developer tutorial demonstrating how to convert live Go (Gin) + Redis traffic into deterministic, zero-code regression tests and mocks with Keploy.
+> **Keploy DevRel Assignment Submission**  
+> An interactive, editorial-grade developer tutorial demonstrating how Keploy intercepts network sockets to generate zero-code regression tests and mocks for a Go (Gin) + Redis microservice.
 
-Built for the **Keploy DevRel Candidate Assignment**.
-
----
-
-## 🎯 What This Tutorial Teaches
-
-This guide explains the complete record-to-replay testing lifecycle:
-1. **Mental Model First**: Explains how Keploy captures network socket traffic at the transport boundary without modifying Go source code or inserting SDKs.
-2. **Step-by-Step Execution**:
-   - Starting the Redis dependency via Docker Compose
-   - Building the Go Gin application container
-   - Running `keploy record` to intercept wire calls
-   - Exercising the OTP verification API via cURL
-   - Inspecting generated test specs (`test-1.yml`) and dependency mocks (`mocks.yml`)
-   - Understanding why dynamic values (random OTPs, dates) are isolated under `assertions.noise`
-   - Replaying tests with `keploy test` without needing a live Redis database
-3. **Interactive & Accessible UI**:
-   - Interactive 7-phase Keploy lifecycle flow diagram
-   - System topology diagram (cURL → Gin → Redis)
-   - Annotated YAML inspector with tree schema breakdown highlighting dynamic noise fields
-   - Subtle copy-to-clipboard buttons with immediate feedback
-   - Zero-flash Light/Dark theme toggle persisting user preferences
-   - Lightweight `IntersectionObserver` progress navigation
+[![Next.js](https://img.shields.io/badge/Framework-Next.js%2015-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![MDX](https://img.shields.io/badge/Authoring-MDX-yellow?style=flat-square&logo=mdx)](https://mdxjs.com/)
+[![Design System](https://img.shields.io/badge/Theme-Keploy%20Docs%20Design-FF914D?style=flat-square)](https://keploy.io/docs)
 
 ---
 
-## 🛠️ Tech Stack
+## 💡 Overview & DevRel Philosophy
 
-- **Framework**: [Next.js](https://nextjs.org/) (App Router, Static Export)
-- **Authoring**: [MDX](https://nextjs.org/docs/app/building-your-application/configuring/mdx) (`@next/mdx`)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Styling**: Native CSS tokens (restrained editorial aesthetic, 760px reading column, zero bloated component libraries)
+Great developer documentation does not simply list terminal commands—it clarifies the **underlying mental model**, builds intuition, and eliminates developer friction before it occurs.
+
+This submission was designed with three core DevRel principles:
+1. **Explain the "Why" Before the "How"**: Demystifies Keploy's eBPF/transport-layer socket capture, explaining why code modification or heavy SDK instrumentation is unnecessary.
+2. **First-Class Interactive Visuals**: Rather than static screenshots that age poorly, key architectural concepts are explained with purpose-built interactive components:
+   - **System Topology Diagram**: Visualizes the client, Go Gin app, and Redis network boundaries.
+   - **7-Stage Lifecycle Flow**: An interactive timeline tracing `cURL → eBPF Intercept → YAML Test Gen → Redis Mock Gen → Replay`.
+   - **Annotated YAML Tree**: An interactive inspector that explains how `assertions.noise` isolates non-deterministic OTPs and timestamps to guarantee stable CI passes.
+3. **Restrained, Editorial Aesthetics**: Faithful implementation of Keploy's official documentation design system (`#111215` background, `#ff914d` brand accents, `DM Sans` + `JetBrains Mono` typography, accessible dark/light modes).
+
+---
+
+## 🛠️ Tech Stack & Engineering Decisions
+
+| Layer | Choice | Rationale |
+| :--- | :--- | :--- |
+| **Framework** | Next.js 15 (App Router) | High performance, static export support, SEO optimization |
+| **Authoring** | MDX (`@next/mdx`) | Native markdown documentation with embedded React components |
+| **Styling** | Native CSS Tokens (`globals.css`) | 0kb UI library bloat, precise styling matching Keploy docs |
+| **Type Safety** | Strict TypeScript | Robust component interfaces and props validation |
+| **Accessibility** | Semantic HTML + ARIA | Screen-reader accessible accordions, keyboard navigable controls |
+
+---
+
+## 🧭 Tutorial Syllabus & Concepts Covered
+
+- **Prerequisites & Architecture**: Docker Network isolation (`ginRedisApp`) and container orchestration.
+- **Step 1: Starting Redis**: Explaining why stateful cache instances create flaky test environments if unmocked.
+- **Step 2: Building the Go Gin Application**: Compiling the HTTP API service.
+- **Step 3: Recording Wire Traffic**: Running `keploy record` to intercept inbound HTTP and outbound Redis TCP socket frames.
+- **Step 4: Triggering the OTP Verification Endpoint**: Exercising the auth controller with cURL.
+- **Step 5: Inspecting Generated Tests & Mocks**:
+  - `test-1.yml`: Request/response contract and automated noise filter rules.
+  - `mocks.yml`: Binary Redis protocol frames captured for offline simulation.
+- **Step 6: Replaying Without Real Redis**: Running `keploy test` to validate regression parity with zero database dependencies.
 
 ---
 
 ## 🚀 Running Locally
 
 ### Prerequisites
-- Node.js 18.17+ or 20+
+- Node.js `18.17+` or `20+`
 - npm / pnpm / yarn
 
-### Installation
-```bash
-# Clone the repository
-git clone https://github.com/your-username/keploy-go-tutorial.git
-cd keploy-go-tutorial
+### Quickstart
 
-# Install dependencies
+```bash
+# 1. Clone the repository
+git clone https://github.com/devokdev/keploy-assignment.git
+cd keploy-assignment
+
+# 2. Install dependencies
 npm install
 
-# Start local dev server
+# 3. Start development server
 npm run dev
 ```
 
@@ -62,49 +76,44 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## 📦 Production Build
 
+Verify static compilation:
+
 ```bash
 npm run build
 ```
-
-Builds static artifacts into `.next/` / `out/`, verified for static hosting.
-
----
-
-## ☁️ Deployment to Vercel
-
-1. Push your repository to GitHub.
-2. Connect your repository on [Vercel](https://vercel.com/).
-3. Framework preset: **Next.js** (default settings).
-4. Click **Deploy**.
 
 ---
 
 ## 📂 Project Structure
 
 ```text
+keploy-assignment/
 ├── app/
-│   ├── layout.tsx             # Root HTML layout with SEO metadata & theme script
-│   └── page.mdx               # Primary tutorial authored in MDX
+│   ├── layout.tsx             # Root layout, theme scripts, Keploy breadcrumbs & SEO
+│   └── page.mdx               # Full tutorial content authored directly in MDX
 ├── components/
-│   ├── AnnotatedYaml.tsx      # Side-by-side YAML inspector with noise annotations
-│   ├── ArchitectureDiagram.tsx# System architecture component (Client -> Gin -> Redis)
-│   ├── Callout.tsx            # Educational callout boxes (Why, Info, Success, Warning)
-│   ├── CodeBlock.tsx          # Code block container with copy button
+│   ├── AnnotatedYaml.tsx      # Interactive YAML schema inspector with noise tags
+│   ├── ArchitectureDiagram.tsx# Grid-aligned system topology (Client -> Gin -> Redis)
+│   ├── Callout.tsx            # Educational callout boxes (Why, Info, Warning, Success)
+│   ├── CodeBlock.tsx          # Syntax-highlighted code block container
 │   ├── CopyButton.tsx         # Accessible clipboard copy button with feedback
-│   ├── FlowDiagram.tsx        # 7-stage Keploy execution flow timeline
-│   ├── GotchaAccordion.tsx    # Native accessible <details>/<summary> accordion
-│   ├── ThemeToggle.tsx        # Light/Dark mode toggle with localStorage persistence
-│   └── TutorialProgress.tsx   # Lightweight scroll-position progress tracker
+│   ├── FlowDiagram.tsx        # 7-stage interactive record/replay lifecycle timeline
+│   ├── GotchaAccordion.tsx    # Native accessible <details>/<summary> troubleshooting
+│   ├── TableOfContents.tsx    # Sticky scroll-spy "On this page" navigation
+│   ├── ThemeToggle.tsx        # Dark/Light theme switcher with localStorage persistence
+│   └── TutorialProgress.tsx   # Quick-jump section navigation pills
 ├── styles/
-│   └── globals.css            # Restrained design system & typography tokens
-├── mdx-components.tsx         # MDX component bindings
-├── next.config.mjs            # Next.js MDX & static output export configuration
-├── tsconfig.json              # Strict TypeScript config
-└── package.json               # Minimal dependency footprint
+│   └── globals.css            # Keploy docs design system tokens & typography
+├── mdx-components.tsx         # Next.js MDX component bindings
+├── next.config.mjs            # MDX bundler configuration
+└── package.json               # Lightweight dependency manifest
 ```
 
 ---
 
-## 📝 Editorial Notes
+## 👤 Candidate Information
 
-This tutorial is an original, pedagogical guide based on the official Keploy Go Gin + Redis quickstart. It focuses on the *why* behind every command, explaining eBPF socket capture, automated Redis mocking, and noise filtration for unpredictable data.
+- **Candidate**: Kartavya (devokdev)
+- **Role**: Developer Relations Engineer Candidate
+- **Repository**: [github.com/devokdev/keploy-assignment](https://github.com/devokdev/keploy-assignment)
+
