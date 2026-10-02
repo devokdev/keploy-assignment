@@ -1,0 +1,339 @@
+# From API Request to Regression Test
+
+<div className="subtitle">
+Learn Keploy by watching one real API interaction become a repeatable, zero-code regression test in Go.
+</div>
+
+<FlowDiagram activeStep="observe" />
+
+Writing and maintaining backend regression tests is traditionally tedious. You write mock handlers, handcraft JSON payloads, maintain synthetic fixtures, and frequently update test assertions whenever internal schemas change.
+
+**Keploy flips this mental model.** Instead of writing tests before observing your app, Keploy sits alongside your running application, observes real HTTP traffic and downstream dependencies, and automatically generates reproducible test cases and mocks.
+
+In this tutorial, you will take a simple Go application, make a single HTTP request, record it with Keploy, and replay it to verify regression safety.
+
+---
+
+## Mental Model: Handcrafted Tests vs. Keploy
+
+<div className="mental-model-grid">
+  <div className="mental-card traditional">
+    <div className="mental-card-title">Traditional Testing</div>
+    <p>1. Manually write mock servers for databases and external APIs.</p>
+    <p>2. Handcraft JSON request fixtures and expected response structs.</p>
+    <p>3. Update test code every time an endpoint signature or mock changes.</p>
+  </div>
+  <div className="mental-card keploy">
+    <div className="mental-card-title">Keploy Workflow</div>
+    <p>1. Start your application with <code>keploy record</code>.</p>
+    <p>2. Send realistic traffic via curl or API clients.</p>
+    <p>3. Keploy captures wire traffic & generates declarative test files.</p>
+    <p>4. Replay tests anytime in CI with <code>keploy test</code> without mocks.</p>
+  </div>
+</div>
+
+---
+
+## Prerequisites
+
+Before starting, ensure you have the following installed on your machine:
+
+1. **Go 1.20+** installed (`go version`).
+2. **Keploy CLI** installed on your system.
+3. **Linux / WSL2 (for Windows) / macOS with Docker** (Keploy utilizes eBPF / network interception for zero-code instrumentation).
+
+To install Keploy on Linux / macOS / WSL:
+
+```bash
+curl --silent --location https://github.com/keploy/keploy/releases/latest/download/keploy_linux_amd64.tar.gz | tar xz -C /tmp
+sudo mv /tmp/keploy /usr/local/bin/keploy
+```
+
+Verify your installation:
+
+```bash
+keploy --version
+```
+
+---
+
+## Step 1 — Set Up the Go Sample Application
+
+<FlowDiagram activeStep="api" />
+
+Let's create a minimal Go HTTP API using **Gin**. This service accepts a URL shortcut payload and returns a short code.
+
+Create a project directory with `main.go`:
+
+```go
+package main
+
+import (
+	"net/http"
+	"github.com/gin-gonic/gin"
+)
+
+type URLRequest struct {
+	URL string `json:"url" binding:"required"`
+}
+
+type URLResponse struct {
+	ID       string `json:"id"`
+	Original string `json:"url"`
+	Status   string `json:"status"`
+}
+
+func main() {
+	r := gin.Default()
+
+	// Health check endpoint
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "url-shortener"})
+	})
+
+	// Core API endpoint
+	r.POST("/api/shorten", func(c *gin.Context) {
+		var req URLRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+			return
+		}
+
+		// Simple deterministic hash/ID generation for demonstration
+		c.JSON(http.StatusCreated, URLResponse{
+			ID:       "kp-9821",
+			Original: req.URL,
+			Status:   "active",
+		})
+	})
+
+	r.Run(":8080")
+}
+```
+
+Initialize your Go module and build the binary:
+
+```bash
+go mod init example/keploy-demo
+go get github.com/gin-gonic/gin
+go build -o app main.go
+```
+
+<Callout type="why" title="Why pre-compile the binary?">
+Compiling the Go application into a standalone binary (<code>./app</code>) enables Keploy to attach directly to the process execution boundary, accurately capturing network sockets without needing source code modifications or custom SDK wrappers.
+</Callout>
+
+---
+
+## Step 2 — Record API Traffic with Keploy
+
+<FlowDiagram activeStep="observe" />
+
+Now, instead of running the binary directly, launch it wrapped in Keploy's `record` command.
+
+```bash
+sudo -E keploy record -c "./app"
+```
+
+### What is happening behind the scenes?
+
+When you execute `keploy record`:
+1. Keploy spins up an interception layer (using eBPF on Linux/WSL).
+2. It executes your binary `./app` as a child process.
+3. Keploy listens for inbound HTTP requests and outbound network calls (Postgres, Redis, HTTP APIs, gRPC).
+4. The console will display: `Keploy is listening on :8080 and ready to capture traffic.`
+
+<Callout type="info" title="Zero Code Changes">
+Notice that we did not import any Keploy libraries into <code>main.go</code>. Keploy operates at the transport layer, meaning your production code remains completely free of vendor testing code.
+</Callout>
+
+---
+
+## Step 3 — Send Real Traffic to Generate Test Cases
+
+<FlowDiagram activeStep="request" />
+
+With Keploy recording in the first terminal, open a second terminal and trigger an actual HTTP request against the running service:
+
+```bash
+curl --request POST \
+  --url http://localhost:8080/api/shorten \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "url": "https://keploy.io/docs"
+  }'
+```
+
+### Expected Response:
+
+```json
+{
+  "id": "kp-9821",
+  "url": "https://keploy.io/docs",
+  "status": "active"
+}
+```
+
+### What Keploy generates:
+
+<FlowDiagram activeStep="testcase" />
+
+Switch back to the terminal running `keploy record`. You will see Keploy log:
+
+```text
+🐰 Keploy captured test case: test-1
+📁 Stored test case in: ./keploy/test-set-0/tests/test-1.yaml
+```
+
+Stop the recording session by pressing `Ctrl + C`.
+
+Inspect the generated test file (`keploy/test-set-0/tests/test-1.yaml`):
+
+```yaml
+version: api.keploy.io/v1beta1
+kind: Http
+name: test-1
+spec:
+  metadata: {}
+  req:
+    method: POST
+    proto_major: 1
+    proto_minor: 1
+    url: /api/shorten
+    header:
+      Content-Type: application/json
+    body: '{"url":"https://keploy.io/docs"}'
+  resp:
+    status_code: 201
+    header:
+      Content-Type: application/json; charset=utf-8
+    body: '{"id":"kp-9821","url":"https://keploy.io/docs","status":"active"}'
+  objects: []
+  assertions:
+    noise: []
+  created: 1717200000
+```
+
+<Callout type="why" title="Why is this format powerful?">
+The test case is stored as clear, declarative YAML. It records the exact headers, body, status code, and any downstream mock calls. It is fully version-controllable in Git and human-readable.
+</Callout>
+
+---
+
+## Step 4 — Replay the Test with `keploy test`
+
+<FlowDiagram activeStep="replay" />
+
+Now verify that Keploy can execute and validate this test automatically without manual intervention.
+
+Run the test suite:
+
+```bash
+sudo -E keploy test -c "./app" --delay 2
+```
+
+### What Keploy does during test replay:
+
+1. Starts `./app` in a controlled test harness.
+2. Injects the recorded HTTP request (`POST /api/shorten`) into the app.
+3. If your app had external dependencies (like MongoDB or Redis), Keploy automatically intercepts those calls and returns the recorded responses (no test databases needed).
+4. Compares the live HTTP response against the recorded YAML response.
+
+### Test Output:
+
+```text
+🐰 Starting test execution for test-set-0 ...
+
+  [PASS] test-1 (POST /api/shorten) - Status: 201, Duration: 12ms
+
+--------------------------------------------------------------------
+Test Suite Summary:
+  Total tests: 1
+  Passed: 1
+  Failed: 0
+--------------------------------------------------------------------
+🎉 All tests passed successfully!
+```
+
+---
+
+## Step 5 — Simulate a Regression and Watch Keploy Catch It
+
+To see the real value of regression testing, let's introduce an accidental bug in `main.go`.
+
+Suppose another engineer changes the ID prefix format from `kp-` to `short-`:
+
+```go
+// Accidental breaking change in main.go
+c.JSON(http.StatusCreated, URLResponse{
+    ID:       "short-9821", // Was previously "kp-9821"
+    Original: req.URL,
+    Status:   "active",
+})
+```
+
+Recompile the binary:
+
+```bash
+go build -o app main.go
+```
+
+Re-run the Keploy test suite:
+
+```bash
+sudo -E keploy test -c "./app" --delay 2
+```
+
+### Keploy catches the diff immediately:
+
+```text
+🐰 Starting test execution for test-set-0 ...
+
+  [FAIL] test-1 (POST /api/shorten)
+  
+  Diff Details:
+  -------------------------------------------------------------
+  Field: body.id
+  Expected: "kp-9821"
+  Actual:   "short-9821"
+  -------------------------------------------------------------
+
+Test Suite Summary:
+  Total tests: 1
+  Passed: 0
+  Failed: 1
+```
+
+<Callout type="success" title="Instant Regression Safety">
+Without writing a single assertion function or mocking library by hand, Keploy pinpointed the exact JSON field that deviated from the expected API contract.
+</Callout>
+
+---
+
+## Summary & Key Takeaways
+
+1. **Capture over Composition:** Real user and client traffic represents the most authentic specification of your system's behavior.
+2. **Zero Code Intrusion:** Your Go codebase stays clean without test-specific routing or intrusive SDKs.
+3. **Automated Mocks:** Keploy captures downstream I/O calls alongside the HTTP test, ensuring tests remain isolated and deterministic in CI/CD.
+4. **Git-Native Test Assets:** Test suites exist as YAML files that can be reviewed in Pull Requests just like application code.
+
+---
+
+## Common Gotchas & Troubleshooting
+
+<Callout type="warning" title="Gotcha 1: Dynamic Timestamps and UUIDs">
+If your API returns non-deterministic fields like timestamps (<code>created_at: 1717200000</code>) or random UUIDs, Keploy allows you to mark these fields as <code>noise</code> in the YAML file so they are ignored during diff comparison.
+</Callout>
+
+<Callout type="info" title="Gotcha 2: The --delay Flag">
+The <code>--delay 2</code> flag gives your application 2 seconds to finish bootstrapping, establishing database connections, and binding ports before Keploy sends test traffic. Increase this if your app takes longer to boot.
+</Callout>
+
+---
+
+## Next Steps
+
+Now that you have seen the core loop:
+* Add database calls (e.g. MongoDB or PostgreSQL) and watch Keploy auto-generate mocks in `mocks.yaml`.
+* Integrate `keploy test` into your GitHub Actions workflow for automated PR verification.
+* Check out the [official Keploy GitHub repository](https://github.com/keploy/keploy) and give it a star!
