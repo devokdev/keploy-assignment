@@ -11,10 +11,23 @@ Built as the final submission for the **Keploy DevRel Candidate Assignment**.
 This repository contains an MDX-powered documentation experience titled **"From API Request to Regression Test"**. 
 
 It is designed with a strict developer-first ethos:
-- **Mental-model first**: Emphasizes *why* Keploy records and replays traffic at the network/transport layer instead of requiring manual test authoring.
-- **Zero bloat**: No unnecessary dependencies, complex state management, or unneeded frameworks.
-- **Standout component**: Includes an interactive `<FlowDiagram />` visual tracker and accessible `<CopyButton />` with fallback clipboard support.
-- **Fully static**: Built using Next.js App Router with MDX support and static output export ready for immediate Vercel deployment.
+- **Mental-Model First**: Emphasizes *why* Keploy records and replays traffic at the transport/process layer instead of requiring manual synthetic test authoring.
+- **Zero Bloat & Native Web Standards**: Uses native HTML `<details>`/`<summary>` accordions, CSS custom properties, and `IntersectionObserver` navigation without heavy third-party UI libraries.
+- **Interactive Stages**: Clickable mental-model stages that smoothly navigate to corresponding steps.
+- **Lightweight Progress Navigation**: Clean sticky/header progress tracker reflecting active section position.
+- **Accessible Interactions**: Functional copy buttons with feedback, theme toggle with zero hydration flash, and accessible ARIA attributes.
+- **Fully Static**: Built using Next.js App Router with MDX support and static output export ready for immediate Vercel deployment.
+
+---
+
+## 🔗 Public Repository Configuration
+
+In `app/layout.tsx`:
+```typescript
+// Insert your public assignment repository URL:
+const GITHUB_REPO_URL = 'https://github.com/your-username/keploy-go-tutorial'
+```
+*(By default points to the official Keploy GitHub if not yet configured).*
 
 ---
 
@@ -56,7 +69,7 @@ This compiles the Next.js app and generates static HTML/CSS/JS artifacts in `.ne
 
 ## ☁️ Deployment to Vercel
 
-1. Push this repository to GitHub.
+1. Push this repository to a public GitHub repository.
 2. Go to [vercel.com/new](https://vercel.com/new) and import your repository.
 3. Keep default settings (Framework: Next.js).
 4. Click **Deploy**.
@@ -67,26 +80,28 @@ This compiles the Next.js app and generates static HTML/CSS/JS artifacts in `.ne
 
 ```text
 ├── app/
-│   ├── layout.tsx         # Root layout with SEO, OpenGraph metadata, Theme context
-│   └── page.mdx           # The hero tutorial content written in pure MDX
+│   ├── layout.tsx             # Root layout with SEO, OpenGraph metadata, Theme context
+│   └── page.mdx               # The hero tutorial content written in pure MDX
 ├── components/
-│   ├── Callout.tsx        # Educational callout boxes (Why, Info, Success, Gotchas)
-│   ├── CodeBlock.tsx      # Syntax block wrapper with copy feedback
-│   ├── CopyButton.tsx     # Clipboard copy button with accessible state and fallbacks
-│   ├── FlowDiagram.tsx    # Standout visual tracker (Request -> API -> Observe -> Test -> Replay)
-│   └── ThemeToggle.tsx    # Dark / Light theme toggle with zero hydration flash
+│   ├── Callout.tsx            # Educational callout boxes (Why, Info, Success, Gotchas)
+│   ├── CodeBlock.tsx          # Syntax block wrapper with copy feedback
+│   ├── CopyButton.tsx         # Clipboard copy button with accessible state and fallbacks
+│   ├── FlowDiagram.tsx        # Interactive mental model diagram & compact step banners
+│   ├── GotchaAccordion.tsx    # Native accessible details/summary accordion
+│   ├── ThemeToggle.tsx        # Dark / Light theme toggle with zero hydration flash
+│   └── TutorialProgress.tsx   # Lightweight IntersectionObserver tutorial progress bar
 ├── styles/
-│   └── globals.css        # Clean CSS design system, typography tokens, and responsive layout
-├── mdx-components.tsx     # Next.js MDX integration mapping
-├── next.config.mjs        # Next.js MDX configuration & static export
-├── tsconfig.json          # Strict TypeScript configuration
-└── package.json           # Minimal, justified dependencies
+│   └── globals.css            # Clean CSS design system, typography tokens, and responsive layout
+├── mdx-components.tsx         # Next.js MDX integration mapping
+├── next.config.mjs            # Next.js MDX configuration & static export
+├── tsconfig.json              # Strict TypeScript configuration
+└── package.json               # Minimal, justified dependencies
 ```
 
 ---
 
 ## 💡 Key Design & DevRel Decisions
 
-1. **Content is the Hero**: Rather than overwhelming the reader with marketing fluff or excessive animations, typography, spacing rhythm, and contrast are tuned for high reading comfort and technical retention.
+1. **"Teach Once, Reinforce Lightly"**: Full 5-card diagram presented at the hero for high conceptual clarity, followed by compact step badges (`STEP 0X / 05`) on subsequent steps to prevent repetitive visual clutter.
 2. **Pedagogical Mental Model**: Each section explains what command is being executed, why it is executed, what happens behind the scenes, and what the expected output is.
 3. **Accessibility**: Full semantic HTML tags, keyboard navigation support, and ARIA labels.

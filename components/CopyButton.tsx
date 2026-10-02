@@ -10,26 +10,44 @@ export function CopyButton({ code }: CopyButtonProps) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
+    if (!code) return
+
     try {
-      await navigator.clipboard.writeText(code)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Fallback for environments where navigator.clipboard might fail
-      const textarea = document.createElement('textarea')
-      textarea.value = code
-      textarea.style.position = 'fixed'
-      textarea.style.opacity = '0'
-      document.body.appendChild(textarea)
-      textarea.select()
-      try {
-        document.execCommand('copy')
+      if (typeof navigator !== 'undefined' && navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(code)
         setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-      } catch (err) {
-        console.error('Failed to copy text: ', err)
+        setTimeout(() => setCopied(false), 1800)
+        return
       }
-      document.body.removeChild(textarea)
+      throw new Error('Clipboard API not available')
+    } catch {
+      // Fallback using textarea for unsupported environments or non-secure contexts
+      try {
+        const textarea = document.createElement('textarea')
+        textarea.value = code
+        textarea.style.position = 'fixed'
+        textarea.style.top = '0'
+        textarea.style.left = '0'
+        textarea.style.width = '2em'
+        textarea.style.height = '2em'
+        textarea.style.padding = '0'
+        textarea.style.border = 'none'
+        textarea.style.outline = 'none'
+        textarea.style.boxShadow = 'none'
+        textarea.style.background = 'transparent'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.focus()
+        textarea.select()
+        const successful = document.execCommand('copy')
+        document.body.removeChild(textarea)
+        if (successful) {
+          setCopied(true)
+          setTimeout(() => setCopied(false), 1800)
+        }
+      } catch (err) {
+        // Fail silently without throwing visible errors to the user
+      }
     }
   }
 
@@ -37,7 +55,8 @@ export function CopyButton({ code }: CopyButtonProps) {
     <button
       onClick={handleCopy}
       className={`copy-btn ${copied ? 'copied' : ''}`}
-      aria-label={copied ? 'Copied to clipboard' : 'Copy code to clipboard'}
+      aria-label={copied ? 'Code copied to clipboard' : 'Copy code to clipboard'}
+      title={copied ? 'Copied!' : 'Copy snippet'}
       type="button"
     >
       {copied ? (

@@ -2,42 +2,42 @@
 
 :root {
   /* Light Theme Colors */
-  --bg-primary: #fbfbfd;
+  --bg-primary: #f8fafc;
   --bg-surface: #ffffff;
-  --bg-surface-elevated: #f4f5f8;
-  --bg-subtle: #f0f2f5;
-  --bg-code-header: #ebeef2;
-  --bg-code: #0e1117;
+  --bg-surface-elevated: #f1f5f9;
+  --bg-subtle: #f8fafc;
+  --bg-code-header: #1e293b;
+  --bg-code: #0b0f19;
   
-  --border-color: #e5e7eb;
-  --border-subtle: #f0f0f2;
+  --border-color: #e2e8f0;
+  --border-subtle: #edf2f7;
   --border-strong: #cbd5e1;
 
   --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-tertiary: #94a3b8;
+  --text-secondary: #334155;
+  --text-tertiary: #64748b;
   --text-inverse: #f8fafc;
 
   /* Brand / Keploy Accent */
-  --brand-primary: #ff6b35;
-  --brand-glow: rgba(255, 107, 53, 0.15);
-  --brand-gradient: linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%);
+  --brand-primary: #ea580c;
+  --brand-glow: rgba(234, 88, 12, 0.12);
+  --brand-gradient: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
   
   /* Status / Highlight colors */
-  --accent-teal: #0ea5e9;
+  --accent-teal: #0284c7;
   --accent-teal-subtle: #f0f9ff;
-  --accent-green: #10b981;
+  --accent-green: #059669;
   --accent-green-subtle: #ecfdf5;
-  --accent-purple: #8b5cf6;
+  --accent-purple: #7c3aed;
   --accent-purple-subtle: #f5f3ff;
-  --accent-amber: #f59e0b;
+  --accent-amber: #d97706;
   --accent-amber-subtle: #fffbeb;
 
   /* Elevation */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
-  --shadow-glow: 0 0 25px var(--brand-glow);
+  --shadow-glow: 0 0 20px rgba(234, 88, 12, 0.15);
 
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -52,7 +52,7 @@
   --bg-primary: #0b0f17;
   --bg-surface: #111827;
   --bg-surface-elevated: #1a2234;
-  --bg-subtle: #172033;
+  --bg-subtle: #151d2f;
   --bg-code-header: #1e293b;
   --bg-code: #090d16;
 
@@ -110,11 +110,19 @@ a {
   color: var(--brand-primary);
   text-decoration: none;
   font-weight: 500;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, opacity 0.15s ease;
 }
 
 a:hover {
   text-decoration: underline;
+}
+
+/* Focus visible styling for accessibility */
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
 }
 
 /* Container */
@@ -184,7 +192,7 @@ a:hover {
   color: var(--text-secondary);
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
   padding: 0.4rem 0.75rem;
   border-radius: 6px;
   border: 1px solid var(--border-color);
@@ -219,7 +227,7 @@ a:hover {
 
 /* Article & Typography */
 .prose-article {
-  padding: 3rem 0 5rem;
+  padding: 2.5rem 0 5rem;
 }
 
 .prose-article h1 {
@@ -233,13 +241,40 @@ a:hover {
 }
 
 .subtitle {
-  font-size: 1.25rem;
-  line-height: 1.5;
+  font-size: 1.2rem;
+  line-height: 1.55;
   color: var(--text-secondary);
   font-weight: 400;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 1.5rem;
+}
+
+.hero-value-props {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1.25rem 0 2rem;
+}
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.65rem;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+}
+
+.hero-tag-arrow {
+  color: var(--brand-primary);
+  font-size: 0.75rem;
 }
 
 .prose-article h2 {
@@ -253,7 +288,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  scroll-margin-top: 80px;
+  scroll-margin-top: 85px;
 }
 
 .step-pill {
@@ -277,6 +312,7 @@ a:hover {
   color: var(--text-primary);
   margin-top: 2rem;
   margin-bottom: 0.6rem;
+  scroll-margin-top: 85px;
 }
 
 .prose-article p {
@@ -305,11 +341,11 @@ a:hover {
 .prose-article code:not(pre code) {
   font-family: var(--font-mono);
   font-size: 0.875em;
-  background-color: var(--bg-subtle);
+  background-color: var(--bg-surface-elevated);
   color: var(--text-primary);
   padding: 0.18em 0.4em;
   border-radius: 4px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-color);
   font-weight: 500;
 }
 
@@ -370,6 +406,71 @@ a:hover {
   background: var(--accent-amber-subtle);
 }
 
+/* Tutorial Progress Navigation */
+.tutorial-progress-bar {
+  margin: 1.5rem 0 2.5rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  overflow-x: auto;
+}
+
+.tutorial-progress-label {
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.tutorial-progress-items {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+}
+
+.progress-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.825rem;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.progress-item:hover {
+  background: var(--bg-surface-elevated);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.progress-item.active {
+  background: var(--brand-glow);
+  color: var(--brand-primary);
+  border-color: rgba(234, 88, 12, 0.3);
+  font-weight: 600;
+}
+
+.progress-num {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
 /* Interactive Flow Diagram Component */
 .flow-diagram-container {
   margin: 2rem 0;
@@ -387,6 +488,8 @@ a:hover {
   margin-bottom: 1.25rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .flow-diagram-title {
@@ -405,7 +508,7 @@ a:hover {
   font-size: 0.8rem;
   font-family: var(--font-mono);
   color: var(--brand-primary);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .flow-diagram-steps {
@@ -425,7 +528,16 @@ a:hover {
   align-items: center;
   text-align: center;
   position: relative;
+  text-decoration: none;
   transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.flow-step-card:hover {
+  text-decoration: none;
+  border-color: var(--border-strong);
+  background: var(--bg-surface-elevated);
+  transform: translateY(-1px);
 }
 
 .flow-step-card.active {
@@ -474,6 +586,57 @@ a:hover {
   font-size: 0.85rem;
   color: var(--text-secondary);
   border-left: 3px solid var(--brand-primary);
+}
+
+/* Compact Step Badge Banner */
+.flow-step-badge-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 1.25rem 0;
+  padding: 0.6rem 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.flow-badge-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.flow-badge-indicator {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--brand-glow);
+  color: var(--brand-primary);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  border: 1px solid rgba(234, 88, 12, 0.3);
+}
+
+.flow-badge-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.flow-badge-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.flow-badge-link:hover {
+  color: var(--brand-primary);
+  text-decoration: underline;
 }
 
 /* Code Snippets & Copy Button */
@@ -586,6 +749,108 @@ a:hover {
   gap: 0.4rem;
 }
 
+/* Interactive Gotcha Accordion (details / summary) */
+.gotcha-accordion {
+  margin: 1.25rem 0;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.gotcha-accordion:hover {
+  border-color: var(--border-strong);
+}
+
+.gotcha-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  list-style: none;
+  background: var(--bg-surface);
+  user-select: none;
+}
+
+.gotcha-summary::-webkit-details-marker {
+  display: none;
+}
+
+.gotcha-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.gotcha-chevron {
+  color: var(--text-tertiary);
+  transition: transform 0.2s ease;
+}
+
+.gotcha-accordion[open] .gotcha-chevron {
+  transform: rotate(180deg);
+}
+
+.gotcha-body {
+  padding: 0.9rem 1.1rem 1.1rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  background: var(--bg-surface-elevated);
+}
+
+.gotcha-body p:last-child {
+  margin-bottom: 0;
+}
+
+/* Next Steps List */
+.next-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.next-step-card {
+  padding: 1.1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.next-step-card:hover {
+  border-color: var(--brand-primary);
+  background: var(--bg-surface-elevated);
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.next-step-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.next-step-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
 /* Footer */
 .site-footer {
   margin-top: auto;
@@ -612,15 +877,19 @@ a:hover {
   
   .flow-diagram-steps {
     grid-template-columns: 1fr;
-    gap: 0.75rem;
+    gap: 0.65rem;
   }
   
   .mental-model-grid {
     grid-template-columns: 1fr;
   }
+
+  .next-steps-grid {
+    grid-template-columns: 1fr;
+  }
   
   .site-header-inner {
     height: auto;
-    padding: 1rem 0;
+    padding: 0.85rem 0;
   }
 }

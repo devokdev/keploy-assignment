@@ -4,13 +4,25 @@
 Learn Keploy by watching one real API interaction become a repeatable, zero-code regression test in Go.
 </div>
 
+<div className="hero-value-props">
+  <span className="hero-tag">⚡ Real API Request</span>
+  <span className="hero-tag-arrow">→</span>
+  <span className="hero-tag">👀 Captured by Keploy</span>
+  <span className="hero-tag-arrow">→</span>
+  <span className="hero-tag">📄 Stored as Golden YAML</span>
+  <span className="hero-tag-arrow">→</span>
+  <span className="hero-tag">🛡️ Replayed on CI</span>
+</div>
+
 <FlowDiagram activeStep="observe" />
 
-Writing and maintaining backend regression tests is traditionally tedious. You write mock handlers, handcraft JSON payloads, maintain synthetic fixtures, and frequently update test assertions whenever internal schemas change.
+<TutorialProgress />
+
+Writing and maintaining backend regression tests is traditionally tedious. You write mock handlers, handcraft JSON fixtures, maintain synthetic test databases, and repeatedly update test assertions whenever internal schemas change.
 
 **Keploy flips this mental model.** Instead of writing tests before observing your app, Keploy sits alongside your running application, observes real HTTP traffic and downstream dependencies, and automatically generates reproducible test cases and mocks.
 
-In this tutorial, you will take a simple Go application, make a single HTTP request, record it with Keploy, and replay it to verify regression safety.
+In this tutorial, you will take a Go application, make a real HTTP request, record it with Keploy, replay it to verify correctness, and watch Keploy automatically catch an intentional regression.
 
 ---
 
@@ -19,30 +31,32 @@ In this tutorial, you will take a simple Go application, make a single HTTP requ
 <div className="mental-model-grid">
   <div className="mental-card traditional">
     <div className="mental-card-title">Traditional Testing</div>
-    <p>1. Manually write mock servers for databases and external APIs.</p>
+    <p>1. Manually write mock servers for databases and external HTTP APIs.</p>
     <p>2. Handcraft JSON request fixtures and expected response structs.</p>
-    <p>3. Update test code every time an endpoint signature or mock changes.</p>
+    <p>3. Update test code every time an endpoint signature or schema changes.</p>
   </div>
   <div className="mental-card keploy">
     <div className="mental-card-title">Keploy Workflow</div>
-    <p>1. Start your application with <code>keploy record</code>.</p>
-    <p>2. Send realistic traffic via curl or API clients.</p>
-    <p>3. Keploy captures wire traffic & generates declarative test files.</p>
-    <p>4. Replay tests anytime in CI with <code>keploy test</code> without mocks.</p>
+    <p>1. Start your application binary wrapped with <code>keploy record</code>.</p>
+    <p>2. Send realistic traffic via curl, Postman, or automated end-to-end tests.</p>
+    <p>3. Keploy captures wire traffic & generates declarative test files and mocks.</p>
+    <p>4. Replay tests anytime in CI with <code>keploy test</code> without external mocks.</p>
   </div>
 </div>
 
 ---
 
+<section id="prerequisites">
+
 ## Prerequisites
 
 Before starting, ensure you have the following installed on your machine:
 
-1. **Go 1.20+** installed (`go version`).
-2. **Keploy CLI** installed on your system.
-3. **Linux / WSL2 (for Windows) / macOS with Docker** (Keploy utilizes eBPF / network interception for zero-code instrumentation).
+1. **[Go 1.20+](https://go.dev/doc/install)** installed (`go version`).
+2. **[Keploy CLI](https://github.com/keploy/keploy)** installed on your system.
+3. **Linux / WSL2 (for Windows) / macOS with Docker** (Keploy utilizes eBPF and network interception for zero-code instrumentation).
 
-To install Keploy on Linux / macOS / WSL:
+To install Keploy on Linux, macOS, or WSL:
 
 ```bash
 curl --silent --location https://github.com/keploy/keploy/releases/latest/download/keploy_linux_amd64.tar.gz | tar xz -C /tmp
@@ -55,13 +69,17 @@ Verify your installation:
 keploy --version
 ```
 
+</section>
+
 ---
 
-## Step 1 — Set Up the Go Sample Application
+<section id="step-1-setup">
 
-<FlowDiagram activeStep="api" />
+## <span className="step-pill">Step 01</span> Run the Go Application
 
-Let's create a minimal Go HTTP API using **Gin**. This service accepts a URL shortcut payload and returns a short code.
+<FlowDiagram compact activeStep="api" stepNumber="STEP 01 / 05" stepTitle="Go Application Setup" />
+
+Let's create a minimal Go HTTP API using the popular [Gin web framework](https://gin-gonic.com/). This service accepts a URL shortcut payload and returns a short code identifier.
 
 Create a project directory with `main.go`:
 
@@ -111,7 +129,7 @@ func main() {
 }
 ```
 
-Initialize your Go module and build the binary:
+Initialize your Go module and build the standalone binary:
 
 ```bash
 go mod init example/keploy-demo
@@ -123,11 +141,15 @@ go build -o app main.go
 Compiling the Go application into a standalone binary (<code>./app</code>) enables Keploy to attach directly to the process execution boundary, accurately capturing network sockets without needing source code modifications or custom SDK wrappers.
 </Callout>
 
+</section>
+
 ---
 
-## Step 2 — Record API Traffic with Keploy
+<section id="step-2-record">
 
-<FlowDiagram activeStep="observe" />
+## <span className="step-pill">Step 02</span> Record Traffic with Keploy
+
+<FlowDiagram compact activeStep="observe" stepNumber="STEP 02 / 05" stepTitle="Keploy Observes Traffic" />
 
 Now, instead of running the binary directly, launch it wrapped in Keploy's `record` command.
 
@@ -147,11 +169,15 @@ When you execute `keploy record`:
 Notice that we did not import any Keploy libraries into <code>main.go</code>. Keploy operates at the transport layer, meaning your production code remains completely free of vendor testing code.
 </Callout>
 
+</section>
+
 ---
 
-## Step 3 — Send Real Traffic to Generate Test Cases
+<section id="step-3-traffic">
 
-<FlowDiagram activeStep="request" />
+## <span className="step-pill">Step 03</span> Make a Real API Request to Generate Test Cases
+
+<FlowDiagram compact activeStep="request" stepNumber="STEP 03 / 05" stepTitle="Trigger Real API Traffic" />
 
 With Keploy recording in the first terminal, open a second terminal and trigger an actual HTTP request against the running service:
 
@@ -174,9 +200,9 @@ curl --request POST \
 }
 ```
 
-### What Keploy generates:
+<section id="step-3-yaml">
 
-<FlowDiagram activeStep="testcase" />
+### What Keploy Generates:
 
 Switch back to the terminal running `keploy record`. You will see Keploy log:
 
@@ -218,11 +244,17 @@ spec:
 The test case is stored as clear, declarative YAML. It records the exact headers, body, status code, and any downstream mock calls. It is fully version-controllable in Git and human-readable.
 </Callout>
 
+</section>
+
+</section>
+
 ---
 
-## Step 4 — Replay the Test with `keploy test`
+<section id="step-4-replay">
 
-<FlowDiagram activeStep="replay" />
+## <span className="step-pill">Step 04</span> Replay the Test with `keploy test`
+
+<FlowDiagram compact activeStep="replay" stepNumber="STEP 04 / 05" stepTitle="Deterministic Test Replay" />
 
 Now verify that Keploy can execute and validate this test automatically without manual intervention.
 
@@ -255,16 +287,20 @@ Test Suite Summary:
 🎉 All tests passed successfully!
 ```
 
+</section>
+
 ---
 
-## Step 5 — Simulate a Regression and Watch Keploy Catch It
+<section id="step-5-regression">
 
-To see the real value of regression testing, let's introduce an accidental bug in `main.go`.
+## <span className="step-pill">Step 05</span> Simulate a Regression and Watch Keploy Catch It
 
-Suppose another engineer changes the ID prefix format from `kp-` to `short-`:
+To see the real value of regression testing, let's introduce an intentional breaking change in `main.go`.
+
+Suppose an engineer inadvertently changes the ID prefix format from `kp-` to `short-`:
 
 ```go
-// Accidental breaking change in main.go
+// Breaking change in main.go
 c.JSON(http.StatusCreated, URLResponse{
     ID:       "short-9821", // Was previously "kp-9821"
     Original: req.URL,
@@ -272,7 +308,7 @@ c.JSON(http.StatusCreated, URLResponse{
 })
 ```
 
-Recompile the binary:
+Recompile the application binary:
 
 ```bash
 go build -o app main.go
@@ -308,32 +344,81 @@ Test Suite Summary:
 Without writing a single assertion function or mocking library by hand, Keploy pinpointed the exact JSON field that deviated from the expected API contract.
 </Callout>
 
+</section>
+
 ---
 
-## Summary & Key Takeaways
+## What Just Happened? (Mental Model Recap)
 
-1. **Capture over Composition:** Real user and client traffic represents the most authentic specification of your system's behavior.
+1. **Capture over Composition:** Real client traffic represents the most authentic specification of your system's behavior.
 2. **Zero Code Intrusion:** Your Go codebase stays clean without test-specific routing or intrusive SDKs.
 3. **Automated Mocks:** Keploy captures downstream I/O calls alongside the HTTP test, ensuring tests remain isolated and deterministic in CI/CD.
 4. **Git-Native Test Assets:** Test suites exist as YAML files that can be reviewed in Pull Requests just like application code.
 
 ---
 
-## Common Gotchas & Troubleshooting
+<section id="troubleshooting">
 
-<Callout type="warning" title="Gotcha 1: Dynamic Timestamps and UUIDs">
-If your API returns non-deterministic fields like timestamps (<code>created_at: 1717200000</code>) or random UUIDs, Keploy allows you to mark these fields as <code>noise</code> in the YAML file so they are ignored during diff comparison.
-</Callout>
+## Troubleshooting & Gotchas
 
-<Callout type="info" title="Gotcha 2: The --delay Flag">
-The <code>--delay 2</code> flag gives your application 2 seconds to finish bootstrapping, establishing database connections, and binding ports before Keploy sends test traffic. Increase this if your app takes longer to boot.
-</Callout>
+<GotchaAccordion title="Gotcha 1: Dynamic Timestamps, Dates, and UUIDs" defaultOpen={true}>
+<p>If your API returns non-deterministic fields like timestamps (<code>created_at: 1717200000</code>) or random UUIDs, Keploy allows you to mark these JSON paths under the <code>assertions.noise</code> section in the YAML test file so they are ignored during diff comparison.</p>
+</GotchaAccordion>
+
+<GotchaAccordion title="Gotcha 2: Understanding the --delay Flag">
+<p>The <code>--delay 2</code> flag gives your application 2 seconds to finish bootstrapping, establishing database connections, and binding ports before Keploy sends test traffic. For larger applications or slower container startup environments, increase this to <code>--delay 5</code>.</p>
+</GotchaAccordion>
+
+<GotchaAccordion title="Gotcha 3: Linux Kernel Permissions and eBPF">
+<p>Because Keploy intercepts socket syscalls at the OS level using eBPF, running <code>sudo -E keploy ...</code> is required on Linux/WSL to ensure appropriate kernel tracing capabilities.</p>
+</GotchaAccordion>
+
+</section>
 
 ---
 
 ## Next Steps
 
-Now that you have seen the core loop:
-* Add database calls (e.g. MongoDB or PostgreSQL) and watch Keploy auto-generate mocks in `mocks.yaml`.
-* Integrate `keploy test` into your GitHub Actions workflow for automated PR verification.
-* Check out the [official Keploy GitHub repository](https://github.com/keploy/keploy) and give it a star!
+Now that you've completed the core quickstart workflow:
+
+<div className="next-steps-grid">
+  <a href="https://keploy.io/docs/server/quickstart/gin-mongo/" target="_blank" rel="noreferrer noopener" className="next-step-card">
+    <div className="next-step-title">
+      <span>🍃 Database Mocking with MongoDB</span>
+      <span aria-hidden="true">→</span>
+    </div>
+    <div className="next-step-desc">
+      Connect a real MongoDB database and see Keploy automatically generate <code>mocks.yaml</code> without synthetic seed scripts.
+    </div>
+  </a>
+
+  <a href="https://keploy.io/docs/ci-cd/github-actions/" target="_blank" rel="noreferrer noopener" className="next-step-card">
+    <div className="next-step-title">
+      <span>🔄 GitHub Actions CI/CD Integration</span>
+      <span aria-hidden="true">→</span>
+    </div>
+    <div className="next-step-desc">
+      Add <code>keploy test</code> to your pull request workflows to catch API contract regressions before merging.
+    </div>
+  </a>
+
+  <a href="https://keploy.io/docs/server/concepts/general-concepts/filtering-noisy-fields/" target="_blank" rel="noreferrer noopener" className="next-step-card">
+    <div className="next-step-title">
+      <span>🎯 Noisy Field Filtering</span>
+      <span aria-hidden="true">→</span>
+    </div>
+    <div className="next-step-desc">
+      Configure advanced noise filters for JWT tokens, dynamic session IDs, and rotating credentials.
+    </div>
+  </a>
+
+  <a href="https://github.com/keploy/keploy" target="_blank" rel="noreferrer noopener" className="next-step-card">
+    <div className="next-step-title">
+      <span>⭐ Explore Keploy Open Source</span>
+      <span aria-hidden="true">→</span>
+    </div>
+    <div className="next-step-desc">
+      Explore the core repository architecture, contribute to the Go agent, and join the community on Slack.
+    </div>
+  </a>
+</div>

@@ -9,13 +9,17 @@ export function ThemeToggle() {
   useEffect(() => {
     // Check local storage or system preference
     const stored = localStorage.getItem('keploy-doc-theme') as 'light' | 'dark' | null
-    if (stored) {
+    if (stored === 'light' || stored === 'dark') {
       setTheme(stored)
       document.documentElement.setAttribute('data-theme', stored)
     } else {
-      // Default to dark mode for technical documentation
-      setTheme('dark')
-      document.documentElement.setAttribute('data-theme', 'dark')
+      // Check system preference if no stored preference exists
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+      const initialTheme = prefersDark ? 'dark' : 'light'
+      // Default to dark as primary technical documentation visual language if undetermined
+      const chosenTheme = stored ? stored : 'dark'
+      setTheme(chosenTheme)
+      document.documentElement.setAttribute('data-theme', chosenTheme)
     }
     setMounted(true)
   }, [])
@@ -27,14 +31,6 @@ export function ThemeToggle() {
     document.documentElement.setAttribute('data-theme', nextTheme)
   }
 
-  if (!mounted) {
-    return (
-      <div className="theme-toggle-btn" style={{ visibility: 'hidden' }} aria-hidden="true">
-        🌙
-      </div>
-    )
-  }
-
   return (
     <button
       onClick={toggleTheme}
@@ -43,7 +39,7 @@ export function ThemeToggle() {
       title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
       type="button"
     >
-      {theme === 'dark' ? (
+      {mounted && theme === 'dark' ? (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="5"></circle>
           <line x1="12" y1="1" x2="12" y2="3"></line>

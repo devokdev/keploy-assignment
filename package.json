@@ -15,8 +15,7 @@
     "@types/mdx": "^2.0.13",
     "next": "15.1.8",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "shiki": "^2.4.2"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.4",
